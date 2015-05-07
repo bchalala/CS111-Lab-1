@@ -16,18 +16,6 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-
-typedef struct {
-    
-} GraphNode; 
-
-typedef struct {
-    GraphNode* no_dependencies;
-    GraphNode* dependencies;
-} DependencyGraph;
-
-
-
 void execute_simple (command_t c);
 void execute_pipe (command_t c);
 void execute_sequence (command_t c);
@@ -44,10 +32,10 @@ command_status (command_t c)
 void
 main_execute( command_t c, bool time_travel) 
 {
+    // If there is no time travel, executes commands as in Lab1B
     if (!time_travel)
         execute_command(c);
-
-
+    
 }
 
 void
