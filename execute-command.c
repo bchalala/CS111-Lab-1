@@ -16,12 +16,24 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-void execute_simple (command_t c, bool time_travel);
-void execute_pipe (command_t c, bool time_travel);
-void execute_sequence (command_t c, bool time_travel);
-void execute_and (command_t c, bool time_travel);
-void execute_or (command_t c, bool time_travel);
-void execute_subshell (command_t c, bool time_travel);
+
+typedef struct {
+    
+} GraphNode; 
+
+typedef struct {
+    GraphNode* no_dependencies;
+    GraphNode* dependencies;
+} DependencyGraph;
+
+
+
+void execute_simple (command_t c);
+void execute_pipe (command_t c);
+void execute_sequence (command_t c);
+void execute_and (command_t c);
+void execute_or (command_t c);
+void execute_subshell (command_t c);
 
 int
 command_status (command_t c)
@@ -30,32 +42,32 @@ command_status (command_t c)
 }
 
 void
-execute_command (command_t c, bool time_travel)
+execute_command (command_t c)
 {
     switch (c->type) {
             
         case SIMPLE_COMMAND:
-            execute_simple(c, time_travel);
+            execute_simple(c);
             break;
             
         case PIPE_COMMAND:
-            execute_pipe(c, time_travel);
+            execute_pipe(c);
             break;
             
         case SEQUENCE_COMMAND:
-            execute_sequence(c, time_travel);
+            execute_sequence(c);
             break;
             
         case AND_COMMAND:
-            execute_and(c, time_travel);
+            execute_and(c);
             break;
             
         case OR_COMMAND:
-            execute_or(c, time_travel);
+            execute_or(c);
             break;
             
         case SUBSHELL_COMMAND:
-            execute_subshell(c, time_travel);
+            execute_subshell(c);
             break;
             
         default:
@@ -85,7 +97,7 @@ rd_execute (char *io, bool *b, int des, int *backup)
 
 
 void
-execute_simple (command_t c, bool time_travel) {
+execute_simple (command_t c) {
     
     // This function can only run simple commands. If it is not simple, then creates an error.
     if (c->type != SIMPLE_COMMAND)
@@ -141,7 +153,7 @@ execute_simple (command_t c, bool time_travel) {
 }
 
 // Function to execute or commands.
-void execute_or (command_t c, bool time_travel){
+void execute_or (command_t c){
     
     // Executes the first command
     execute_command(c->u.command[0], time_travel);
@@ -160,7 +172,7 @@ void execute_or (command_t c, bool time_travel){
 }
 
 void
-execute_subshell (command_t c, bool time_travel) {
+execute_subshell (command_t c) {
     if (c->type != SUBSHELL_COMMAND)
         exit_message("Error: execute_subshell called without subshell command. \n");
     
@@ -198,7 +210,7 @@ execute_subshell (command_t c, bool time_travel) {
 
 
 // Function to execute and commands.
-void execute_and (command_t c, bool time_travel)
+void execute_and (command_t c)
 {
 	execute_command(c->u.command[0], time_travel);
 
@@ -214,7 +226,7 @@ void execute_and (command_t c, bool time_travel)
 
 
 // Function to execute pipe commands.
-void execute_pipe (command_t c, bool time_travel) {
+void execute_pipe (command_t c) {
 
 	int pipefd[2];
 	if (pipe(pipefd) == -1)
@@ -270,7 +282,7 @@ void execute_pipe (command_t c, bool time_travel) {
     return;
 }
 
-void execute_sequence (command_t c, bool time_travel) 
+void execute_sequence (command_t c) 
 {
 	int status;
 	execute_command(c->u.command[0], time_travel);
