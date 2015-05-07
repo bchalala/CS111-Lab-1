@@ -35,17 +35,35 @@ int command_status (command_t);
 /* Execute Functions */
 /////////////////////////////////////////////////////////////////////
 
-void execute_simple (command_t c, bool time_travel);
+void execute_simple (command_t c);
 
-void execute_sequence (command_t c, bool time_travel);
+void execute_sequence (command_t c);
 
-void execute_subshell (command_t c, bool time_travel);
+void execute_subshell (command_t c);
 
-void execute_and (command_t c, bool time_travel);
+void execute_and (command_t c);
 
-void execute_or (command_t c, bool time_travel);
+void execute_or (command_t c);
 
-void execute_pipe (command_t c, bool time_travel);
+void execute_pipe (command_t c);
+
+/////////////////////////////////////////////////////////////////////
+/* Time Travel Execute Functions */
+/////////////////////////////////////////////////////////////////////
+
+typedef struct dependency_graph;
+
+void make_graph_node(command_t c);
+
+void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i);
+
+bool does_intersect(char** list1, int l1_size, char** list2, int l2_size);
+
+dependency_graph create_dependency_graph();
+
+void execute_no_dependency(graph_node_t nd);
+
+void execute_dependency(graph_node_t d);
 
 /////////////////////////////////////////////////////////////////////
 /* Functions defined by me for help with making the command stream */

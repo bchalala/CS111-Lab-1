@@ -16,24 +16,11 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-/*                           *
- *  Functions for execution  *
- *                           */
-void execute_simple (command_t c);
-void execute_pipe (command_t c);
-void execute_sequence (command_t c);
-void execute_and (command_t c);
-void execute_or (command_t c);
-void execute_subshell (command_t c);
 
-// Error message function, its defined in read-command.c
-void exit_message(const char* message);
 
 /* time travel functions functions and stucts */
 typedef struct graph_node* graph_node_t;
 #define LIST_SIZE 16 // RL & WL size
-void make_graph_node(command_t c);
-void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i);
 
 struct graph_node {
     char** RL;
@@ -52,16 +39,10 @@ struct graph_node {
 };
 
 // Struct that contains the graph_node_t
-typedef struct { 
+typedef struct dependency_graph { 
     graph_node_t no_dependency;
     graph_node_t dependency;
 } dependency_graph;
-
-// Create dependency_graph function definition
-dependency_graph create_dependency_graph();
-bool does_intersect(char** list1, int l1_size, char** list2, int l2_size); 
-void execute_no_dependency(graph_node_t nd);
-void execute_dependency(graph_node_t nd);
 
 graph_node_t gnode_list;
 graph_node_t tail_gnode;
