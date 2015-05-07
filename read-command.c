@@ -860,8 +860,8 @@ balance_stacks(command_stack *cmdstack, command_stack *opstack, command_t new_co
 void
 exit_message(const char* message)
 {
-    fprintf(stderr, "%s", message);
-    // error(1, 0, "%s", message);
+    // fprintf(stderr, "%s", message);
+    error(1, 0, "%s", message);
     
     exit(EXIT_FAILURE);
     
