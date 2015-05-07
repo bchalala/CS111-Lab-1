@@ -16,18 +16,9 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-
-typedef struct {
-    
-} GraphNode; 
-
-typedef struct {
-    GraphNode* no_dependencies;
-    GraphNode* dependencies;
-} DependencyGraph;
-
-
-
+/*                           *
+ *  Functions for execution  *
+ *                           */
 void execute_simple (command_t c);
 void execute_pipe (command_t c);
 void execute_sequence (command_t c);
@@ -35,6 +26,25 @@ void execute_and (command_t c);
 void execute_or (command_t c);
 void execute_subshell (command_t c);
 
+
+/* time travel functions functions and stucts */
+#define LIST_SIZE 16 // RL & WL size
+void make_graph_node(command_t c);
+void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i);
+
+struct graph_node {
+    char** RL;
+    char** WL;
+    
+    struct graph_node* next;
+    command_t cmd;
+    pid_t pid;
+    struct graph_node** depends_on;
+};
+
+graph_node_t gnode_list;
+graph_node_t tail_gnode;
+/* */
 int
 command_status (command_t c)
 {
@@ -46,7 +56,16 @@ main_execute( command_t c, bool time_travel)
 {
     if (!time_travel)
         execute_command(c);
-
+    else
+    {
+        if (c->type == SEQUENCE_COMMAND)
+        {
+            make_graph_node(c->u.command[0]);
+            make_graph_node(c->u.command[1]);
+        }
+        else
+            make_graph_node(c);
+    }
 
 }
 
@@ -299,4 +318,69 @@ void execute_sequence (command_t c)
 	status = c->u.command[1]->status;
 	c->status = status;
 	return;
+}
+
+/*                            *
+ *   TIME TRAVEL FUNCTIONS    *
+ *                            */
+
+void make_graph_node(command_t c)
+{
+    graph_node_t gnode = (graph_node_t)checked_malloc(sizeof(struct graph_node));
+    int write_i, read_i; // indexes for RL & WL
+    write_i = read_i = 0;
+    gnode->RL = (char**) checked_malloc(sizeof(char*) * LIST_SIZE);
+    gnode->WL = (char**) checked_malloc(sizeof(char*) * LIST_SIZE);
+    gnode->next = NULL;
+    gnode->depends_on = NULL;
+    gnode->cmd = c;
+    
+    if (gnode_list == NULL)
+    {
+        gnode_list = gnode;
+        tail_gnode = gnode;
+    }
+    else
+    {
+        tail_gnode->next = gnode;
+        tail_gnode = gnode;
+    }
+    
+    build_lists(c, gnode, &write_i, &read_i);
+}
+
+void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
+{
+    // DFS all simple commands to get their RD's & args for input
+    if (c->type == AND_COMMAND || c->type == OR_COMMAND || c->type == PIPE_COMMAND)
+    {
+        build_lists(c->u.command[0], gn, write_i, read_i);
+        build_lists(c->u.command[1], gn, write_i, read_i);
+    }
+    else if (c->type == SIMPLE_COMMAND)
+    {
+        if (c->input != NULL)
+        {
+            unsigned int length = strlen(c->input) + 1;
+            gn->RL[*read_i] = (char*) checked_malloc(sizeof(char) * length);
+            strcpy (gn->RL[*read_i], c->input);
+            (*read_i)++;
+        }
+        if (c->output != NULL)
+        {
+            unsigned int length = strlen(c->output) + 1;
+            gn->WL[*write_i] = (char*) checked_malloc(sizeof(char) * length);
+            strcpy (gn->WL[*write_i], c->output);
+            (*write_i)++;
+        }
+        
+        int i = 1;
+        while (c->u.word[i] != NULL)
+        {
+            unsigned int length = strlen(c->u.word[i]) + 1;
+            gn->RL[*read_i] = (char*) checked_malloc(sizeof(char) * length);
+            strcpy (gn->RL[*read_i], c->u.word[i]);
+            (*read_i)++; i++;
+        }
+    }
 }
