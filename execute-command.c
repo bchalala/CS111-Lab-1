@@ -58,8 +58,10 @@ typedef struct {
 } dependency_graph;
 
 // Create dependency_graph function definition
-dependency_graph
-create_dependency_graph();
+dependency_graph create_dependency_graph();
+bool does_intersect(char** list1, int l1_size, char** list2, int l2_size); 
+void execute_no_dependency(graph_node_t nd);
+void execute_dependency(graph_node_t nd);
 
 graph_node_t gnode_list;
 graph_node_t tail_gnode;
@@ -75,7 +77,6 @@ command_status (command_t c)
 void
 main_execute( command_t c, bool time_travel) 
 {
-    
     if (!time_travel)
         execute_command(c);
     
@@ -90,15 +91,67 @@ main_execute( command_t c, bool time_travel)
         else
             make_graph_node(c);
     }
-
 }
 
 void
 timetravel_execute_command();
 {
     // This is where the graph nodes are compared and executed.
+    dependency_graph dg = create_dependency_graph();
+    execute_no_dependency(dg->no_dependency);
+    execute_dependency(dg->dependency);
+}
 
+void
+execute_no_dependency(graph_node_t nd)
+{
+    graph_node_t current = nd;
+    while (current != NULL)
+    {
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+            execute_command(current->cmd);
+            exit(EXIT_SUCCESS);
+        }
+        else
+        {
+            current->pid = pid;
+        }
+        current = current->next;
+    }
+}
+
+void
+execute_dependency(graph_node_t d)
+{
+    graph_node_t current = d;
+    while (current != NULL)
+    {
+        int i, size;
+        size = d->depends_size;
     
+        // Checks if all dependencies have started running
+        for (i = 0; i < size; i++)
+        {
+            if (d->depends_on[i]->pid == -1)
+                i--;
+        }
+
+        int status;
+        for (i = 0; i < size; i++)
+        {
+            waitpid(j->pid, &status, 0);
+        }
+        
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+            execute_command(d->cmd);
+        }
+        else
+            d->pid = pid;
+    }
 }
 
 void
@@ -367,7 +420,8 @@ void make_graph_node(command_t c)
     gnode->depends_on = NULL;
     gnode->cmd = c;
     gnode->dependency = false;
-    
+    gnode->pid = -1;
+
     if (gnode_list == NULL)
     {
         gnode_list = gnode;
@@ -465,6 +519,9 @@ create_dependency_graph()
         // Moves to the next element
         iterator = current->next;
 
+        if (current->depends_on == NULL)
+            current->depends_size = 0;
+
         // The cases where there is a dependency
         bool RAW;
         bool WAR;
@@ -490,7 +547,7 @@ create_dependency_graph()
                 if (iterator->depends_on == NULL)
                 {
                     iterator->depends_size = 1;
-                    iterator->depends_on = (graph_node_t*) checked_malloc(sizeof(graph_node_t)*depends_size);
+                    iterator->depends_on = (graph_node_t*) checked_malloc(sizeof(graph_node_t));
                     if (iterator->depends_on == NULL)
                         exit_message("Error. dependency_graph malloc failed.");                        
                     iterator->depends_on[0] = current;
@@ -499,7 +556,7 @@ create_dependency_graph()
                 {
                     iterator->depends_size = iterator->depends_size + 1;
                     iterator->depends_on = checked_realloc((graph_node_t*) iterator->depends_on, 
-                                                            sizeof(graph_node_t)*depends_size);
+                                                            sizeof(graph_node_t)*iterator->depends_size);
                     if (iterator->depends_on == NULL)
                         exit_message("Error. dependency_graph malloc failed.");                        
                     iterator->depends_on[iterator->depends_size - 1] = current;
