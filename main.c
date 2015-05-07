@@ -73,6 +73,9 @@ main (int argc, char **argv)
             main_execute(command, time_travel);
         }
     }
+    
+    if (time_travel)
+        timetravel_execute_command();
 
     return print_tree || !last_command ? 0 : command_status (last_command);
 }

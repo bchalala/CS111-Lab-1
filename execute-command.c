@@ -28,6 +28,7 @@ void execute_subshell (command_t c);
 
 
 /* time travel functions functions and stucts */
+typedef struct graph_node* graph_node_t;
 #define LIST_SIZE 16 // RL & WL size
 void make_graph_node(command_t c);
 void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i);
@@ -35,6 +36,7 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i);
 struct graph_node {
     char** RL;
     char** WL;
+    bool dependency;
     
     struct graph_node* next;
     command_t cmd;
@@ -42,8 +44,19 @@ struct graph_node {
     struct graph_node** depends_on;
 };
 
+// Struct that contains the graph_node_t
+typedef struct { 
+    graph_node_t no_dependency;
+    graph_node_t dependency;
+} dependency_graph;
+
+// Create dependency_graph function definition
+dependency_graph
+create_dependency_graph();
+
 graph_node_t gnode_list;
 graph_node_t tail_gnode;
+
 /* */
 int
 command_status (command_t c)
@@ -51,22 +64,34 @@ command_status (command_t c)
   return c->status;
 }
 
+
 void
 main_execute( command_t c, bool time_travel) 
 {
+    
     if (!time_travel)
         execute_command(c);
+    
+    // Creates graph nodes.  
     else
     {
         if (c->type == SEQUENCE_COMMAND)
         {
-            make_graph_node(c->u.command[0]);
-            make_graph_node(c->u.command[1]);
+            main_execute(c->u.command[0]);
+            main_execute(c->u.command[1]);
         }
         else
             make_graph_node(c);
     }
 
+}
+
+void
+timetravel_execute_command();
+{
+    // This is where the graph nodes are compared and executed.
+
+    
 }
 
 void
@@ -334,6 +359,7 @@ void make_graph_node(command_t c)
     gnode->next = NULL;
     gnode->depends_on = NULL;
     gnode->cmd = c;
+    gnode->dependency = false;
     
     if (gnode_list == NULL)
     {
@@ -384,3 +410,124 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
         }
     }
 }
+
+bool
+does_intersect(char** list1, int l1_size, char** list2, int l2_size) 
+{
+   int i, j;
+
+   // Iterates through all elements of the list, checks for intersections 
+   for (i = 0; i < l1size; i++) {
+      for (j = 0; j < l2size; j++) {
+         if (strcmp(list1[i], list2[j]) == 0)
+            return true; 
+      }
+   } 
+
+   return false;
+}
+
+dependency_graph
+create_dependency_graph() 
+{
+    dependency_graph dg;
+    dg.no_dependency = NULL;
+    dg.dependency = NULL;
+
+    // Checks if the gnode_list is null or only has 1 element in it;
+    graph_node_t current = gnode_list;     
+    if (current == NULL)
+        return dg;
+
+    graph_node_t d_end = NULL;
+    graph_node_t nd_end = NULL; 
+    graph_node_t iterator = NULL;
+
+    // Iterates through all graph_nodes, assigns their dependencies, 
+    // and puts them in the correct queue
+    while (current != gnode_tail)
+    {
+        // Moves to the next element
+        iterator = current->next;
+
+        // The cases where there is a dependency
+        bool RAW = false;
+        bool WAR = false;
+        bool WAW = false;
+
+        while (iterator != NULL)
+        {
+           RAW = does_intersect(current->RL, current->read_i, iterator->WL, current->write_i);
+           WAW = does_intersect(current->WL, current->write_i, iterator->WL, current->write-i);
+           WAR = does_intersect(current->WL, current->write_i, iterator->RL, current->read-i);
+           
+           // If there is an intersection of RAW, WAW, WAR, adds dependency
+           if (RAW || WAW || WAR)
+           {
+                current->dependency = true;
+
+           }
+           
+        }
+
+        
+        // If the current element is not dependent, adds it to no dependency
+        if (current->dependency == false) 
+        {
+            if (nd_end == NULL) 
+            {
+               dg.no_dependency = current;
+               nd_end = current; 
+            }
+            else
+            {
+               nd_end->next = current;
+               nd_end = nd_end->next; 
+            }
+        }
+
+        // Else it adds it to the end of the dependency list
+        else
+        {
+            if (d_end == NULL) 
+               dg.dependency = current;
+            else
+               d_end->next = current; 
+        }
+
+        // Checks for dependencies in the next element.
+        current = current->next;
+
+    }
+    
+    
+    // Adds the last element into the dependency graph
+    if (current == gnode_tail) 
+    {
+        
+        // If the current element is not dependent, adds it to no dependency
+        if (current->dependency == false) 
+        {
+            if (nd_end == NULL)
+               dg.no_dependency = current;
+            else
+               nd_end->next = current;
+        }
+
+        // Else it adds it to the end of the dependency list
+        else
+        {
+            if (d_end == NULL) 
+               dg.dependency = current;
+            else
+               d_end->next = current; 
+        }
+        return dg;
+    }
+}
+
+
+
+
+
+
