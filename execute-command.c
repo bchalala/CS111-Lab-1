@@ -26,6 +26,8 @@ void execute_and (command_t c);
 void execute_or (command_t c);
 void execute_subshell (command_t c);
 
+// Error message function, its defined in read-command.c
+void exit_message(const char* message);
 
 /* time travel functions functions and stucts */
 typedef struct graph_node* graph_node_t;
@@ -39,11 +41,13 @@ struct graph_node {
     int read_i;
     int write_i;
     
-    bool dependency;
-
     struct graph_node* next;
     command_t cmd;
     pid_t pid;
+    
+    // Keeps track of dependencies
+    bool dependency;
+    int depends_size;
     struct graph_node** depends_on;
 };
 
@@ -462,12 +466,15 @@ create_dependency_graph()
         iterator = current->next;
 
         // The cases where there is a dependency
-        bool RAW = false;
-        bool WAR = false;
-        bool WAW = false;
+        bool RAW;
+        bool WAR;
+        bool WAW;
 
         while (iterator != NULL)
         {
+           RAW = false;
+           WAR = false;
+           WAW = false;
            RAW = does_intersect(current->RL, current->read_i, iterator->WL, current->write_i);
            WAW = does_intersect(current->WL, current->write_i, iterator->WL, current->write-i);
            WAR = does_intersect(current->WL, current->write_i, iterator->RL, current->read-i);
@@ -475,12 +482,31 @@ create_dependency_graph()
            // If there is an intersection of RAW, WAW, WAR, adds dependency
            if (RAW || WAW || WAR)
            {
+                // Sets both dependency flags to true.
                 current->dependency = true;
+                iterator->dependency = true;
 
+                // Mallocs if size is 0, reallocs if there is a size
+                if (iterator->depends_on == NULL)
+                {
+                    iterator->depends_size = 1;
+                    iterator->depends_on = (graph_node_t*) checked_malloc(sizeof(graph_node_t)*depends_size);
+                    if (iterator->depends_on == NULL)
+                        exit_message("Error. dependency_graph malloc failed.");                        
+                    iterator->depends_on[0] = current;
+                }
+                else
+                {
+                    iterator->depends_size = iterator->depends_size + 1;
+                    iterator->depends_on = checked_realloc((graph_node_t*) iterator->depends_on, 
+                                                            sizeof(graph_node_t)*depends_size);
+                    if (iterator->depends_on == NULL)
+                        exit_message("Error. dependency_graph malloc failed.");                        
+                    iterator->depends_on[iterator->depends_size - 1] = current;
+                }
            }
-           
+           iterator = iterator->next;
         }
-
         
         // If the current element is not dependent, adds it to no dependency
         if (current->dependency == false) 
@@ -508,14 +534,11 @@ create_dependency_graph()
 
         // Checks for dependencies in the next element.
         current = current->next;
-
-    }
-    
+    }    
     
     // Adds the last element into the dependency graph
     if (current == gnode_tail) 
     {
-        
         // If the current element is not dependent, adds it to no dependency
         if (current->dependency == false) 
         {
@@ -533,8 +556,9 @@ create_dependency_graph()
             else
                d_end->next = current; 
         }
-        return dg;
     }
+   
+    return dg;
 }
 
 
