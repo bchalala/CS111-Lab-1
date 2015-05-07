@@ -98,6 +98,8 @@ timetravel_execute_command();
 {
     // This is where the graph nodes are compared and executed.
     dependency_graph dg = create_dependency_graph();
+
+    // Executes the dependency graph. 
     execute_no_dependency(dg->no_dependency);
     execute_dependency(dg->dependency);
 }
@@ -486,8 +488,8 @@ does_intersect(char** list1, int l1_size, char** list2, int l2_size)
    int i, j;
 
    // Iterates through all elements of the list, checks for intersections 
-   for (i = 0; i < l1size; i++) {
-      for (j = 0; j < l2size; j++) {
+   for (i = 0; i < l1_size; i++) {
+      for (j = 0; j < l2_size; j++) {
          if (strcmp(list1[i], list2[j]) == 0)
             return true; 
       }
@@ -514,7 +516,7 @@ create_dependency_graph()
 
     // Iterates through all graph_nodes, assigns their dependencies, 
     // and puts them in the correct queue
-    while (current != gnode_tail)
+    while (current != tail_gnode)
     {
         // Moves to the next element
         iterator = current->next;
@@ -533,8 +535,8 @@ create_dependency_graph()
            WAR = false;
            WAW = false;
            RAW = does_intersect(current->RL, current->read_i, iterator->WL, current->write_i);
-           WAW = does_intersect(current->WL, current->write_i, iterator->WL, current->write-i);
-           WAR = does_intersect(current->WL, current->write_i, iterator->RL, current->read-i);
+           WAW = does_intersect(current->WL, current->write_i, iterator->WL, current->write_i);
+           WAR = does_intersect(current->WL, current->write_i, iterator->RL, current->read_i);
            
            // If there is an intersection of RAW, WAW, WAR, adds dependency
            if (RAW || WAW || WAR)
@@ -594,7 +596,7 @@ create_dependency_graph()
     }    
     
     // Adds the last element into the dependency graph
-    if (current == gnode_tail) 
+    if (current == tail_gnode) 
     {
         // If the current element is not dependent, adds it to no dependency
         if (current->dependency == false) 
