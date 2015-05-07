@@ -70,7 +70,7 @@ main (int argc, char **argv)
         else
         {
             last_command = command;
-            execute_command (command, time_travel);
+            main_execute(command, time_travel);
         }
     }
 

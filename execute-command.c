@@ -42,6 +42,15 @@ command_status (command_t c)
 }
 
 void
+main_execute( command_t c, bool time_travel) 
+{
+    if (!time_travel)
+        execute_command(c);
+
+
+}
+
+void
 execute_command (command_t c)
 {
     switch (c->type) {
