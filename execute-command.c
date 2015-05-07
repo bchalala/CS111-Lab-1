@@ -36,8 +36,11 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i);
 struct graph_node {
     char** RL;
     char** WL;
-    bool dependency;
+    int read_i;
+    int write_i;
     
+    bool dependency;
+
     struct graph_node* next;
     command_t cmd;
     pid_t pid;
@@ -352,8 +355,8 @@ void execute_sequence (command_t c)
 void make_graph_node(command_t c)
 {
     graph_node_t gnode = (graph_node_t)checked_malloc(sizeof(struct graph_node));
-    int write_i, read_i; // indexes for RL & WL
-    write_i = read_i = 0;
+    
+    gnode->write_i = gnode->read_i = 0;
     gnode->RL = (char**) checked_malloc(sizeof(char*) * LIST_SIZE);
     gnode->WL = (char**) checked_malloc(sizeof(char*) * LIST_SIZE);
     gnode->next = NULL;
@@ -372,7 +375,7 @@ void make_graph_node(command_t c)
         tail_gnode = gnode;
     }
     
-    build_lists(c, gnode, &write_i, &read_i);
+    build_lists(c, gnode, &(gnode->write_i), &(gnode->read_i));
 }
 
 void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
@@ -387,6 +390,8 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
     {
         if (c->input != NULL)
         {
+            if(*read_i == LIST_SIZE)
+                checked_realloc(gn->RL, sizeof(char*) * LIST_SIZE * 2)
             unsigned int length = strlen(c->input) + 1;
             gn->RL[*read_i] = (char*) checked_malloc(sizeof(char) * length);
             strcpy (gn->RL[*read_i], c->input);
@@ -394,8 +399,10 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
         }
         if (c->output != NULL)
         {
+            if(*write_i == LIST_SIZE)
+                checked_realloc(gn->WL, sizeof(char*) * LIST_SIZE * 2)
             unsigned int length = strlen(c->output) + 1;
-            gn->WL[*write_i] = (char*) checked_malloc(sizeof(char) * length);
+            gn->WL[*write_i] = (char*) checked_Rmalloc(sizeof(char) * length);
             strcpy (gn->WL[*write_i], c->output);
             (*write_i)++;
         }
@@ -403,11 +410,15 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
         int i = 1;
         while (c->u.word[i] != NULL)
         {
+            if(*read_i == LIST_SIZE)
+                checked_realloc(gn->RL, sizeof(char*) * LIST_SIZE * 2)
             unsigned int length = strlen(c->u.word[i]) + 1;
             gn->RL[*read_i] = (char*) checked_malloc(sizeof(char) * length);
             strcpy (gn->RL[*read_i], c->u.word[i]);
             (*read_i)++; i++;
         }
+        gn->RL[*read_i] = NULL;
+        gn->WL[*write_i] = NULL;
     }
 }
 
