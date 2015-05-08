@@ -24,10 +24,7 @@ command_t read_command_stream (command_stream_t stream);
 /* Print a command to stdout, for debugging.  */
 void print_command (command_t);
 
-/* Execute a command from the main function. */
-void main_execute (command_t c, bool time_travel);
-
-/* Execute a command sequentially  */
+/* Execute a command.  Use "time travel" if the flag is set.  */
 void execute_command (command_t);
 
 /* Return the exit status of a command, which must have previously
@@ -49,24 +46,6 @@ void execute_and (command_t c);
 void execute_or (command_t c);
 
 void execute_pipe (command_t c);
-
-/////////////////////////////////////////////////////////////////////
-/* Time Travel Execute Functions */
-/////////////////////////////////////////////////////////////////////
-
-typedef struct dependency_graph;
-
-void make_graph_node(command_t c);
-
-void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i);
-
-bool does_intersect(char** list1, int l1_size, char** list2, int l2_size);
-
-dependency_graph create_dependency_graph();
-
-void execute_no_dependency(graph_node_t nd);
-
-void execute_dependency(graph_node_t d);
 
 /////////////////////////////////////////////////////////////////////
 /* Functions defined by me for help with making the command stream */

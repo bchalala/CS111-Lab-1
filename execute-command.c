@@ -7,8 +7,8 @@
 #include "command-internals.h"
 #include "alloc.h"
 #include <stdlib.h>
-#include <string.h>
 #include <error.h>
+#include <string.h>
 
 
 // added libraries
@@ -17,11 +17,24 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+/*                           *
+ *  Functions for execution  *
+ *                           */
+void execute_simple (command_t c);
+void execute_pipe (command_t c);
+void execute_sequence (command_t c);
+void execute_and (command_t c);
+void execute_or (command_t c);
+void execute_subshell (command_t c);
 
+// Error message function, its defined in read-command.c
+void exit_message(const char* message);
 
 /* time travel functions functions and stucts */
 typedef struct graph_node* graph_node_t;
 #define LIST_SIZE 16 // RL & WL size
+void make_graph_node(command_t c);
+void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i);
 
 struct graph_node {
     char** RL;
@@ -40,10 +53,16 @@ struct graph_node {
 };
 
 // Struct that contains the graph_node_t
-typedef struct dependency_graph { 
+typedef struct { 
     graph_node_t no_dependency;
     graph_node_t dependency;
 } dependency_graph;
+
+// Create dependency_graph function definition
+dependency_graph create_dependency_graph();
+bool does_intersect(char** list1, int l1_size, char** list2, int l2_size); 
+void execute_no_dependency(graph_node_t nd);
+void execute_dependency(graph_node_t nd);
 
 graph_node_t gnode_list;
 graph_node_t tail_gnode;
@@ -57,7 +76,7 @@ command_status (command_t c)
 
 
 void
-main_execute (command_t c, bool time_travel) 
+main_execute( command_t c, bool time_travel) 
 {
     if (!time_travel)
         execute_command(c);
@@ -76,7 +95,7 @@ main_execute (command_t c, bool time_travel)
 }
 
 void
-timetravel_execute_command();
+timetravel_execute_command()
 {
     // This is where the graph nodes are compared and executed.
     dependency_graph dg = create_dependency_graph();
@@ -107,7 +126,7 @@ execute_no_dependency(graph_node_t nd)
 }
 
 void
-execute_dependency (graph_node_t d)
+execute_dependency(graph_node_t d)
 {
     graph_node_t current = d;
     while (current != NULL)
@@ -132,13 +151,14 @@ execute_dependency (graph_node_t d)
         if (pid == 0)
         {
             execute_command(current->cmd);
-            exit(EXIT_SUCCESS);
+	    exit(EXIT_SUCCESS);
         }
         else
             current->pid = pid;
 
-        current = current->next;
+	current = current->next;
     }
+
 }
 
 void
@@ -396,7 +416,7 @@ void execute_sequence (command_t c)
  *   TIME TRAVEL FUNCTIONS    *
  *                            */
 
-void make_graph_node (command_t c)
+void make_graph_node(command_t c)
 {
     graph_node_t gnode = (graph_node_t)checked_malloc(sizeof(struct graph_node));
     
@@ -468,7 +488,7 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
 }
 
 bool
-does_intersect (char** list1, int l1_size, char** list2, int l2_size) 
+does_intersect(char** list1, int l1_size, char** list2, int l2_size) 
 {
    int i, j;
 
@@ -484,7 +504,7 @@ does_intersect (char** list1, int l1_size, char** list2, int l2_size)
 }
 
 dependency_graph
-create_dependency_graph () 
+create_dependency_graph() 
 {
     dependency_graph dg;
     dg.no_dependency = NULL;
@@ -551,17 +571,15 @@ create_dependency_graph ()
            }
            iterator = iterator->next;
         }
+	graph_node_t newcurrent = current->next;
         
-        // Saves the next pointer of the newcurrent        
-        graph_node_t newcurrent = current->next;
-
         // If the current element is not dependent, adds it to no dependency
         if (current->dependency == false) 
         {
             if (nd_end == NULL) 
             {
                dg.no_dependency = current;
-               nd_end = current;
+               nd_end = current; 
             }
             else
             {
@@ -573,21 +591,21 @@ create_dependency_graph ()
         // Else it adds it to the end of the dependency list
         else
         {
-            if (d_end == NULL)
-            { 
+            if (d_end == NULL) 
+	    {
                dg.dependency = current;
-               d_end = current;
-            }
+	       d_end = current;
+	    }
             else
-            {
+	    {
                d_end->next = current; 
-               d_end = d_end->next;
-            }
+	       d_end = d_end->next;
+	    }
         }
 
         // Checks for dependencies in the next element.
-        current->next = NULL;
-        current = newcurrent;
+	current->next = NULL;
+	current = newcurrent;
     }    
     
     // Adds the last element into the dependency graph
