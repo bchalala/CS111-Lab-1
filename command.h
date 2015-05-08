@@ -24,8 +24,11 @@ command_t read_command_stream (command_stream_t stream);
 /* Print a command to stdout, for debugging.  */
 void print_command (command_t);
 
-/* Execute a command.  Use "time travel" if the flag is set.  */
-void execute_command (command_t, bool);
+/* Execute a command from the main function. */
+void main_execute (command_t c, bool time_travel);
+
+/* Execute a command sequentially  */
+void execute_command (command_t);
 
 /* Return the exit status of a command, which must have previously
    been executed.  Wait for the command, if it is not already finished.  */

@@ -56,7 +56,7 @@ command_status (command_t c)
 
 
 void
-main_execute( command_t c, bool time_travel) 
+main_execute (command_t c, bool time_travel) 
 {
     if (!time_travel)
         execute_command(c);
@@ -66,8 +66,8 @@ main_execute( command_t c, bool time_travel)
     {
         if (c->type == SEQUENCE_COMMAND)
         {
-            main_execute(c->u.command[0]);
-            main_execute(c->u.command[1]);
+            main_execute(c->u.command[0], true);
+            main_execute(c->u.command[1], true);
         }
         else
             make_graph_node(c);
@@ -81,8 +81,8 @@ timetravel_execute_command();
     dependency_graph dg = create_dependency_graph();
 
     // Executes the dependency graph. 
-    execute_no_dependency(dg->no_dependency);
-    execute_dependency(dg->dependency);
+    execute_no_dependency(dg.no_dependency);
+    execute_dependency(dg.dependency);
 }
 
 void
@@ -106,34 +106,37 @@ execute_no_dependency(graph_node_t nd)
 }
 
 void
-execute_dependency(graph_node_t d)
+execute_dependency (graph_node_t d)
 {
     graph_node_t current = d;
     while (current != NULL)
     {
         int i, size;
-        size = d->depends_size;
+        size = current->depends_size;
     
         // Checks if all dependencies have started running
         for (i = 0; i < size; i++)
         {
-            if (d->depends_on[i]->pid == -1)
+            if (current->depends_on[i]->pid == -1)
                 i--;
         }
 
         int status;
         for (i = 0; i < size; i++)
         {
-            waitpid(j->pid, &status, 0);
+            waitpid(current->depends_on[i]->pid, &status, 0);
         }
         
         pid_t pid = fork();
         if (pid == 0)
         {
-            execute_command(d->cmd);
+            execute_command(current->cmd);
+            exit(EXIT_SUCCESS);
         }
         else
-            d->pid = pid;
+            current->pid = pid;
+
+        current = current->next;
     }
 }
 
@@ -252,12 +255,12 @@ execute_simple (command_t c) {
 void execute_or (command_t c){
     
     // Executes the first command
-    execute_command(c->u.command[0], time_travel);
+    execute_command(c->u.command[0]);
     int status = c->u.command[0]->status;
     
     // If the first command does not return true, executes the second.
     if (status != 0) {
-        execute_command(c->u.command[1], time_travel);
+        execute_command(c->u.command[1]);
         status = c->u.command[1]->status;
     }
     
@@ -287,7 +290,7 @@ execute_subshell (command_t c) {
     fdout = rd_execute(c->output, &out, 1, &b_out);
     
     // Calls execute command on the subshell_commmand
-    execute_command(c->u.subshell_command, time_travel);
+    execute_command(c->u.subshell_command);
     
     // If input has been redirected, then restore stdin.
     if (in) {
@@ -308,10 +311,10 @@ execute_subshell (command_t c) {
 // Function to execute and commands.
 void execute_and (command_t c)
 {
-	execute_command(c->u.command[0], time_travel);
+	execute_command(c->u.command[0]);
 
 	if (c->u.command[0]->status == 0) {	// only if first command succeeds
-		execute_command(c->u.command[1], time_travel);
+		execute_command(c->u.command[1]);
 		c->status = c->u.command[1]->status;
 	}
 	else
@@ -334,7 +337,7 @@ void execute_pipe (command_t c) {
 	{	
 		close(pipefd[0]);	// no need for read end	
 		dup2(pipefd[1], 1);
-		execute_command(c->u.command[0], time_travel);
+		execute_command(c->u.command[0]);
 		close(pipefd[1]);
 		exit(c->u.command[0]->status);
 	}
@@ -345,7 +348,7 @@ void execute_pipe (command_t c) {
 		{
 			close(pipefd[1]);
 			dup2(pipefd[0],0);
-			execute_command(c->u.command[1], time_travel);
+			execute_command(c->u.command[1]);
 			close(pipefd[0]);
 			exit(c->u.command[1]->status);
 
@@ -381,8 +384,8 @@ void execute_pipe (command_t c) {
 void execute_sequence (command_t c) 
 {
 	int status;
-	execute_command(c->u.command[0], time_travel);
-	execute_command(c->u.command[1], time_travel);
+	execute_command(c->u.command[0]);
+	execute_command(c->u.command[1]);
 	status = c->u.command[1]->status;
 	c->status = status;
 	return;
@@ -392,7 +395,7 @@ void execute_sequence (command_t c)
  *   TIME TRAVEL FUNCTIONS    *
  *                            */
 
-void make_graph_node(command_t c)
+void make_graph_node (command_t c)
 {
     graph_node_t gnode = (graph_node_t)checked_malloc(sizeof(struct graph_node));
     
@@ -432,7 +435,7 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
         if (c->input != NULL)
         {
             if(*read_i == LIST_SIZE)
-                checked_realloc(gn->RL, sizeof(char*) * LIST_SIZE * 2)
+                checked_realloc(gn->RL, sizeof(char*) * LIST_SIZE * 2);
             unsigned int length = strlen(c->input) + 1;
             gn->RL[*read_i] = (char*) checked_malloc(sizeof(char) * length);
             strcpy (gn->RL[*read_i], c->input);
@@ -441,9 +444,9 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
         if (c->output != NULL)
         {
             if(*write_i == LIST_SIZE)
-                checked_realloc(gn->WL, sizeof(char*) * LIST_SIZE * 2)
+                checked_realloc(gn->WL, sizeof(char*) * LIST_SIZE * 2);
             unsigned int length = strlen(c->output) + 1;
-            gn->WL[*write_i] = (char*) checked_Rmalloc(sizeof(char) * length);
+            gn->WL[*write_i] = (char*) checked_malloc(sizeof(char) * length);
             strcpy (gn->WL[*write_i], c->output);
             (*write_i)++;
         }
@@ -452,7 +455,7 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
         while (c->u.word[i] != NULL)
         {
             if(*read_i == LIST_SIZE)
-                checked_realloc(gn->RL, sizeof(char*) * LIST_SIZE * 2)
+                checked_realloc(gn->RL, sizeof(char*) * LIST_SIZE * 2);
             unsigned int length = strlen(c->u.word[i]) + 1;
             gn->RL[*read_i] = (char*) checked_malloc(sizeof(char) * length);
             strcpy (gn->RL[*read_i], c->u.word[i]);
@@ -464,7 +467,7 @@ void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
 }
 
 bool
-does_intersect(char** list1, int l1_size, char** list2, int l2_size) 
+does_intersect (char** list1, int l1_size, char** list2, int l2_size) 
 {
    int i, j;
 
@@ -480,7 +483,7 @@ does_intersect(char** list1, int l1_size, char** list2, int l2_size)
 }
 
 dependency_graph
-create_dependency_graph() 
+create_dependency_graph () 
 {
     dependency_graph dg;
     dg.no_dependency = NULL;
@@ -515,9 +518,9 @@ create_dependency_graph()
            RAW = false;
            WAR = false;
            WAW = false;
-           RAW = does_intersect(current->RL, current->read_i, iterator->WL, current->write_i);
-           WAW = does_intersect(current->WL, current->write_i, iterator->WL, current->write_i);
-           WAR = does_intersect(current->WL, current->write_i, iterator->RL, current->read_i);
+           RAW = does_intersect(current->RL, current->read_i, iterator->WL, iterator->write_i);
+           WAW = does_intersect(current->WL, current->write_i, iterator->WL, iterator->write_i);
+           WAR = does_intersect(current->WL, current->write_i, iterator->RL, iterator->read_i);
            
            // If there is an intersection of RAW, WAW, WAR, adds dependency
            if (RAW || WAW || WAR)
@@ -548,13 +551,16 @@ create_dependency_graph()
            iterator = iterator->next;
         }
         
+        // Saves the next pointer of the newcurrent        
+        graph_node_t newcurrent = current->next;
+
         // If the current element is not dependent, adds it to no dependency
         if (current->dependency == false) 
         {
             if (nd_end == NULL) 
             {
                dg.no_dependency = current;
-               nd_end = current; 
+               nd_end = current;
             }
             else
             {
@@ -566,14 +572,21 @@ create_dependency_graph()
         // Else it adds it to the end of the dependency list
         else
         {
-            if (d_end == NULL) 
+            if (d_end == NULL)
+            { 
                dg.dependency = current;
+               d_end = current;
+            }
             else
+            {
                d_end->next = current; 
+               d_end = d_end->next;
+            }
         }
 
         // Checks for dependencies in the next element.
-        current = current->next;
+        current->next = NULL;
+        current = newcurrent;
     }    
     
     // Adds the last element into the dependency graph
