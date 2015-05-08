@@ -722,7 +722,6 @@ handle_flags(token token, bool *flags)
     if (!flags[SIMPLE_FLAG])
     {
         switch (token.type) {
-            case RIGHT:
             case PIPE:
             case SEQ:
             case OR:
