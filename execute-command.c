@@ -7,6 +7,7 @@
 #include "command-internals.h"
 #include "alloc.h"
 #include <stdlib.h>
+#include <string.h>
 #include <error.h>
 
 
