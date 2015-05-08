@@ -302,7 +302,7 @@ void tokenize (char* buf, int file_length, char** words, unsigned int* wordCount
             
             if (buf[i] == ';')
             {
-                if (isCmd(buf[i+1]) && buf[i+1] != '(')
+                if (isCmd(buf[i+1]) && buf[i+1] != '(' && buf[i+1] != ')')
                 {
                     exit_message("Invalid Command. \n");
                 }
@@ -559,7 +559,7 @@ create_tree (token *token_arr, unsigned int *arr_size, int *element)
     if (*element == *arr_size)
     {
         // If there is still a need for a simple flag, it exits with an error.
-        if (flags[SIMPLE_REQ_FLAG])
+        if (flags[SIMPLE_REQ_FLAG] && token_arr[*element - 1].type != SEQ)
         {
             exit_message("Error: Invalid Syntax \n");
             return NULL;
@@ -860,8 +860,8 @@ balance_stacks(command_stack *cmdstack, command_stack *opstack, command_t new_co
 void
 exit_message(const char* message)
 {
-    // fprintf(stderr, "%s", message);
-    error(1, 0, "%s", message);
+    fprintf(stderr, "%s", message);
+    // error(1, 0, "%s", message);
     
     exit(EXIT_FAILURE);
     

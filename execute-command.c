@@ -7,7 +7,7 @@
 #include "command-internals.h"
 #include "alloc.h"
 #include <stdlib.h>
-#include <error.h>
+// #include <error.h>
 #include <string.h>
 
 
@@ -84,10 +84,16 @@ main_execute( command_t c, bool time_travel)
     // Creates graph nodes.  
     else
     {
-        if (c->type == SEQUENCE_COMMAND)
+        if (c->type == SUBSHELL_COMMAND)
         {
-            main_execute(c->u.command[0], true);
-            main_execute(c->u.command[1], true);
+            make_graph_node(c->u.subshell_command);
+        }
+        else if (c->type == SEQUENCE_COMMAND)
+        {
+            if (c->u.command[0] != NULL)
+                main_execute(c->u.command[0], true);
+            if (c->u.command[1] != NULL)
+                main_execute(c->u.command[1], true);
         }
         else
             make_graph_node(c);
@@ -350,7 +356,7 @@ void execute_pipe (command_t c) {
 
 	int pipefd[2];
 	if (pipe(pipefd) == -1)
-		error(1, 0, "PIPE ERROR");
+        exit_message("PIPE ERROR.");
 
 	pid_t pid = fork();
 
@@ -395,19 +401,25 @@ void execute_pipe (command_t c) {
 			}
 		}
 		else
-			error(1, 0, "FORK ERROR IN PIPE");
+            exit_message("FORK ERROR IN PIPE");
 	}
 	else
-		error(1, 0, "FORK ERROR IN PIPE");	
+		exit_message("FORK ERROR IN PIPE");	
     return;
 }
 
 void execute_sequence (command_t c) 
 {
 	int status;
-	execute_command(c->u.command[0]);
-	execute_command(c->u.command[1]);
-	status = c->u.command[1]->status;
+    if (c->u.command[0] != NULL) {
+        execute_command(c->u.command[0]);
+        status = c->u.command[0]->status;
+    }
+    if (c->u.command[1] != NULL) {
+        execute_command(c->u.command[1]);
+        status = c->u.command[1]->status;
+    }
+	
 	c->status = status;
 	return;
 }
@@ -446,7 +458,7 @@ void make_graph_node(command_t c)
 void build_lists(command_t c, graph_node_t gn, int* write_i, int* read_i)
 {
     // DFS all simple commands to get their RD's & args for input
-    if (c->type == AND_COMMAND || c->type == OR_COMMAND || c->type == PIPE_COMMAND)
+    if (c->type == AND_COMMAND || c->type == OR_COMMAND || c->type == PIPE_COMMAND || c->type == SEQUENCE_COMMAND)
     {
         build_lists(c->u.command[0], gn, write_i, read_i);
         build_lists(c->u.command[1], gn, write_i, read_i);
